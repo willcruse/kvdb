@@ -14,8 +14,9 @@ type Listener interface {
 }
 
 type TCPListener struct {
-	Address string
-	Storage StorageBackend
+	Address  string
+	Storage  StorageBackend
+	OpLogger WriteOperationLogger
 }
 
 func (t *TCPListener) Listen() error {
@@ -66,7 +67,6 @@ func (t *TCPListener) handleNetConn(conn net.Conn) {
 			}
 			fmt.Printf("Fetched %s -> %s\n", key, res)
 
-			break
 		case SET_COMMAND:
 			value, err := readString(reader)
 			if err != nil {
@@ -76,21 +76,33 @@ func (t *TCPListener) handleNetConn(conn net.Conn) {
 			fmt.Printf("Setting %s to %s\n", key, value)
 			err = t.Storage.Set(key, value)
 			if err != nil {
+				log.Printf("handler_net_conn: Error setting value %v\n", err)
+				return
+			}
+
+			err = t.OpLogger.LogSet(key, value)
+			if err != nil {
+				log.Printf("handler_net_conn: Error logging operation %v\n", err)
 				return
 			}
 			fmt.Printf("Set %s -> %s\n", key, value)
-			break
+
 		case DELETE_COMMAND:
-			// handle delete command
 			fmt.Printf("Deleting %s\n", key)
 			err = t.Storage.Delete(key)
 			if err != nil {
+				log.Printf("handler_net_conn: Error deleting value %v\n", err)
+				return
+			}
+			err = t.OpLogger.LogDelete(key)
+			if err != nil {
+				log.Printf("handler_net_conn: Error logging operation %v\n", err)
 				return
 			}
 			fmt.Printf("Delete %s\n", key)
-			break
+
 		default:
-			// handle unknown command
+			// TODO: handle unknown command
 		}
 	}
 
