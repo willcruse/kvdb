@@ -5,11 +5,6 @@ import (
 	"os"
 )
 
-// TODO: Allow configuration
-const (
-	BUFFER_SIZE = 1024
-)
-
 type WriteOperationLogger interface {
 	Init() error
 	LogSet(key, value string) error
