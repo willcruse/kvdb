@@ -8,7 +8,6 @@ import (
 // TODO: Allow configuration
 const (
 	BUFFER_SIZE = 1024
-	FILE_NAME   = "kvdb.db"
 )
 
 type WriteOperationLogger interface {
@@ -19,13 +18,17 @@ type WriteOperationLogger interface {
 
 // TODO: This should be replaced with a logger that stores actual commands in binary format
 type StringDiskLogger struct {
-	file *os.File
+	FileName string
+	file     *os.File
 }
 
 func (sdl *StringDiskLogger) Init() error {
-	file, err := os.OpenFile(FILE_NAME, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if sdl.FileName == "" {
+		return fmt.Errorf("(StringDiskLogger) StringDiskLogger has no FileName property")
+	}
+	file, err := os.OpenFile(sdl.FileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		err = fmt.Errorf("(StringDiskLogger) Failed to open %s. Error: %v", FILE_NAME, err)
+		err = fmt.Errorf("(StringDiskLogger) Failed to open %s. Error: %v", sdl.FileName, err)
 		return err
 	}
 
