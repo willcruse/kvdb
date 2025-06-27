@@ -1,4 +1,4 @@
-package serversrc
+package internal
 
 import (
 	"bufio"
@@ -6,6 +6,10 @@ import (
 	"io"
 	"log"
 	"net"
+
+	"github.com/willcruse/kvdb/server/v2/internal"
+	storagebackend "github.com/willcruse/kvdb/server/v2/internal/storage-backend"
+	writelogger "github.com/willcruse/kvdb/server/v2/internal/write-logger"
 )
 
 // Listener is responsible for responding to incoming messages
@@ -15,8 +19,8 @@ type Listener interface {
 
 type TCPListener struct {
 	Address  string
-	Storage  StorageBackend
-	OpLogger WriteOperationLogger
+	Storage  storagebackend.StorageBackend
+	OpLogger writelogger.WriteOperationLogger
 }
 
 func (t *TCPListener) Listen() error {
@@ -58,7 +62,7 @@ func (t *TCPListener) handleNetConn(conn net.Conn) {
 		fmt.Printf("Command Value: %d\n", commandValueInt)
 
 		switch commandValueInt {
-		case GET_COMMAND:
+		case commands.GET_COMMAND:
 			// handler get command
 			fmt.Printf("Fetching %s\n", key)
 			res, err := t.Storage.Get(key)
@@ -67,7 +71,7 @@ func (t *TCPListener) handleNetConn(conn net.Conn) {
 			}
 			fmt.Printf("Fetched %s -> %s\n", key, res)
 
-		case SET_COMMAND:
+		case commands.SET_COMMAND:
 			value, err := readString(reader)
 			if err != nil {
 				log.Printf("handler_net_conn: Error reading value from stream %v\n", err)
@@ -87,7 +91,7 @@ func (t *TCPListener) handleNetConn(conn net.Conn) {
 			}
 			fmt.Printf("Set %s -> %s\n", key, value)
 
-		case DELETE_COMMAND:
+		case commands.DELETE_COMMAND:
 			fmt.Printf("Deleting %s\n", key)
 			err = t.Storage.Delete(key)
 			if err != nil {

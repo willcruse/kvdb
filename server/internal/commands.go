@@ -1,4 +1,4 @@
-package serversrc
+package commands
 
 const (
 	GET_COMMAND    = 0

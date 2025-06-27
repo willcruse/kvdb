@@ -1,11 +1,11 @@
-package serversrc
+package writelogger
 
 import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
+
+	"github.com/willcruse/kvdb/server/v2/internal"
 )
 
 type WriteOperationLogger interface {
@@ -13,7 +13,7 @@ type WriteOperationLogger interface {
 	Close() error
 	LogSet(key, value string) error
 	LogDelete(key string) error
-	Replay() ([]Command, error)
+	Replay() ([]commands.Command, error)
 }
 
 // TODO: This should be replaced with a logger that stores actual commands in binary format
@@ -47,13 +47,13 @@ func (sdl *StringDiskLogger) Close() error {
 	return nil
 }
 
-func (sdl *StringDiskLogger) Replay() ([]Command, error) {
+func (sdl *StringDiskLogger) Replay() ([]commands.Command, error) {
 	if sdl.file == nil {
 		err := fmt.Errorf("(StringDiskLogger) Call to Replay with no file set. Have you called `Init()`?")
 		return nil, err
 	}
 
-	var commands []Command
+	var logged_commands []commands.Command
 	scanner := bufio.NewScanner(sdl.file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -78,7 +78,7 @@ func (sdl *StringDiskLogger) Replay() ([]Command, error) {
 			if err != nil {
 				return nil, err
 			}
-			commands = append(commands, CreateSetCommand(key, value))
+			logged_commands = append(logged_commands, commands.CreateSetCommand(key, value))
 		case "DELETE":
 			canScan := scanner.Scan()
 			if !canScan {
@@ -89,14 +89,14 @@ func (sdl *StringDiskLogger) Replay() ([]Command, error) {
 			if err != nil {
 				return nil, err
 			}
-			commands = append(commands, CreateDeleteCommand(key))
+			logged_commands = append(logged_commands, commands.CreateDeleteCommand(key))
 		default:
 			err := fmt.Errorf("(StringDiskLogger) Unexpected line content. Expected 'SET' or 'DELETE' got '%s'", line)
 			return nil, err
 		}
 	}
 
-	return commands, nil
+	return logged_commands, nil
 }
 
 func (sdl *StringDiskLogger) parseLogLine(line string) (string, error) {
@@ -111,7 +111,7 @@ func (sdl *StringDiskLogger) parseLogLine(line string) (string, error) {
 			} else {
 				intVal := int(val - '0')
 				if intVal < 0 || intVal > 9 {
-					return "", fmt.Errorf("(StringDiskLogger) Failure to parse length of log line. Expected int got %r", val)
+					return "", fmt.Errorf("(StringDiskLogger) Failure to parse length of log line. Expected int got %d", val)
 				}
 
 				length = (length * 10) + intVal

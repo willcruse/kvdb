@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/willcruse/kvdb/v2/server/server_src"
+	listener "github.com/willcruse/kvdb/server/v2/internal/listener"
+	storagebackend "github.com/willcruse/kvdb/server/v2/internal/storage-backend"
+	writelogger "github.com/willcruse/kvdb/server/v2/internal/write-logger"
 )
 
 const (
@@ -78,10 +80,10 @@ func main() {
 		os.Exit(0)
 	}
 
-	sb := &serversrc.MapStorageBackend{}
+	sb := &storagebackend.MapStorageBackend{}
 	sb.Init()
 
-	opLogger := &serversrc.StringDiskLogger{FileName: config.LogFilePath}
+	opLogger := &writelogger.StringDiskLogger{FileName: config.LogFilePath}
 	err = opLogger.Init()
 	if err != nil {
 		log.Fatalf("Failed to Init StringDiskLogger. Error: %v\n", err)
@@ -89,7 +91,7 @@ func main() {
 	defer opLogger.Close()
 
 	serverAddress := fmt.Sprintf(":%d", config.Port)
-	tcpListener := serversrc.TCPListener{
+	tcpListener := listener.TCPListener{
 		Address:  serverAddress,
 		Storage:  sb,
 		OpLogger: opLogger,
