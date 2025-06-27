@@ -103,7 +103,7 @@ func (server *Server) handleConnection(conn listener.Readable) {
 		if err != nil {
 			log.Printf("handler_net_conn: Error reading key from stream %v\n", err)
 			response.ErrorCode = commands.SERVER_ERROR_ERROR_CODE
-			continue
+			break
 		}
 
 		fmt.Printf("Command Value: %d\n", commandValueInt)
@@ -115,7 +115,7 @@ func (server *Server) handleConnection(conn listener.Readable) {
 			if err != nil {
 				log.Printf("handler_net_conn: Error fetching from storage backend %v\n", err)
 				response.ErrorCode = commands.SERVER_ERROR_ERROR_CODE
-				continue
+				break
 			}
 			fmt.Printf("Fetched %s -> %s\n", key, res)
 			response.Message = res
@@ -125,21 +125,21 @@ func (server *Server) handleConnection(conn listener.Readable) {
 			if err != nil {
 				log.Printf("handler_net_conn: Error reading value from stream %v\n", err)
 				response.ErrorCode = commands.SERVER_ERROR_ERROR_CODE
-				continue
+				break
 			}
 			fmt.Printf("Setting %s to %s\n", key, value)
 			err = server.StorageBackend.Set(key, value)
 			if err != nil {
 				log.Printf("handler_net_conn: Error setting value %v\n", err)
 				response.ErrorCode = commands.SERVER_ERROR_ERROR_CODE
-				continue
+				break
 			}
 
 			err = server.WriteLogger.LogSet(key, value)
 			if err != nil {
 				log.Printf("handler_net_conn: Error logging operation %v\n", err)
 				response.ErrorCode = commands.SERVER_ERROR_ERROR_CODE
-				continue
+				break
 			}
 			fmt.Printf("Set %s -> %s\n", key, value)
 
@@ -149,13 +149,13 @@ func (server *Server) handleConnection(conn listener.Readable) {
 			if err != nil {
 				log.Printf("handler_net_conn: Error deleting value %v\n", err)
 				response.ErrorCode = commands.SERVER_ERROR_ERROR_CODE
-				continue
+				break
 			}
 			err = server.WriteLogger.LogDelete(key)
 			if err != nil {
 				log.Printf("handler_net_conn: Error logging operation %v\n", err)
 				response.ErrorCode = commands.SERVER_ERROR_ERROR_CODE
-				continue
+				break
 			}
 			fmt.Printf("Delete %s\n", key)
 
