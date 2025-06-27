@@ -95,10 +95,9 @@ func main() {
 		WriteLogger:    opLogger,
 	}
 	err = server.Init()
+	log.Printf("Starting server on %s\n", serverAddress)
+	err = server.Listen()
 	if err != nil {
 		log.Fatalf("Failed to start server. Error: %v\n", err)
 	}
-
-	log.Printf("Starting server on %s\n", serverAddress)
-	server.Listen()
 }
