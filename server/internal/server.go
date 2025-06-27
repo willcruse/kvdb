@@ -30,6 +30,32 @@ func (server *Server) Init() error {
 		return err
 	}
 
+	commandsToReplay, err := server.WriteLogger.Replay()
+	if err != nil {
+		err = fmt.Errorf("(Server) Failed to replay WriteLogger. Error: %w", err)
+		return err
+	}
+
+	for _, commandToReplay := range commandsToReplay {
+		log.Printf("Command Replay: %+v\n", commandToReplay)
+		switch commandToReplay.Identifier {
+		case commands.SET_COMMAND:
+			err = server.StorageBackend.Set(commandToReplay.Key, commandToReplay.Value)
+			if err != nil {
+				err = fmt.Errorf("(Server): Failed to apply SET command. Key = %s Value = %s. Error: %w", commandToReplay.Key, commandToReplay.Value, err)
+				return err
+			}
+		case commands.DELETE_COMMAND:
+			err = server.StorageBackend.Delete(commandToReplay.Key)
+			if err != nil {
+				err = fmt.Errorf("(Server): Failed to apply DELETE command. Key = %s. Error: %w", commandToReplay.Key, err)
+				return err
+			}
+		default:
+			return fmt.Errorf("(Server) Unknown command to reply %+v", commandToReplay)
+		}
+	}
+
 	return nil
 }
 

@@ -26,7 +26,7 @@ func (sdl *StringDiskLogger) Init() error {
 	if sdl.FileName == "" {
 		return fmt.Errorf("(StringDiskLogger) StringDiskLogger has no FileName property")
 	}
-	file, err := os.OpenFile(sdl.FileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(sdl.FileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		err = fmt.Errorf("(StringDiskLogger) Failed to open %s. Error: %v", sdl.FileName, err)
 		return err
@@ -57,7 +57,6 @@ func (sdl *StringDiskLogger) Replay() ([]commands.Command, error) {
 	scanner := bufio.NewScanner(sdl.file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		// TODO: Parse this into a command
 		switch line {
 		case "SET":
 			canScan := scanner.Scan()
@@ -94,6 +93,10 @@ func (sdl *StringDiskLogger) Replay() ([]commands.Command, error) {
 			err := fmt.Errorf("(StringDiskLogger) Unexpected line content. Expected 'SET' or 'DELETE' got '%s'", line)
 			return nil, err
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("(StringDiskLogger) Failed to read from file. Error: %w", err)
 	}
 
 	return logged_commands, nil
