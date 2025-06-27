@@ -9,7 +9,7 @@ type TCPListener struct {
 	Address string
 }
 
-func (t *TCPListener) Listen(connChan chan net.Conn) error {
+func (t *TCPListener) Listen(connChan chan Readable) error {
 	ln, err := net.Listen("tcp", t.Address)
 	if err != nil {
 		return err

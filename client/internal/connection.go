@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"net"
@@ -13,6 +14,8 @@ type ServerConnection interface {
 type TCPServerConnection struct {
 	serverAddress    string
 	socketConnection net.Conn
+	reader           *bufio.Reader
+	writer           *bufio.Writer
 }
 
 func CreateTCPServerConnection(serverAddress string) (*TCPServerConnection, error) {
@@ -21,12 +24,24 @@ func CreateTCPServerConnection(serverAddress string) (*TCPServerConnection, erro
 		return nil, fmt.Errorf("tcp_conn: failed to create TCP connection. %w", err)
 	}
 
-	tcpServerConnection := TCPServerConnection{serverAddress, conn}
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
+
+	tcpServerConnection := TCPServerConnection{
+		serverAddress:    serverAddress,
+		socketConnection: conn,
+		reader:           reader,
+		writer:           writer,
+	}
 	return &tcpServerConnection, nil
 }
 
 func (c *TCPServerConnection) SendMessage(message []byte) ([]byte, error) {
-	numWritten, err := c.socketConnection.Write(message)
+	numWritten, err := c.writer.Write(message)
+	if err != nil {
+		return nil, fmt.Errorf("tcp_conn: error writing message to connection. %w", err)
+	}
+	err = c.writer.Flush()
 	if err != nil {
 		return nil, fmt.Errorf("tcp_conn: error writing message to connection. %w", err)
 	}
@@ -36,15 +51,19 @@ func (c *TCPServerConnection) SendMessage(message []byte) ([]byte, error) {
 	}
 
 	var readBuffer []byte
-	_, err = c.socketConnection.Read(readBuffer)
+	// Allocating way too much memory
+	// Max message size in theory is 257 bytes
+	readBuffer = make([]byte, 512)
+	// _, err = c.reader.Read(readBuffer)
+	nRead, err := c.socketConnection.Read(readBuffer)
+
+	if nRead == 0 {
+		return nil, errors.New("tcp_conn: no bytes read")
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("tcp_conn: failed to read from connection. %w", err)
 	}
-
-	// if numRead == 0 {
-	// 	return nil, errors.New("tcp_conn: no bytes read from connection.")
-	// }
 
 	return readBuffer, nil
 }

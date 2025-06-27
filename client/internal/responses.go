@@ -7,7 +7,6 @@ const (
 )
 
 func DecodeResponse(res []byte) (*Response, error) {
-	return &Response{}, nil
 	resSize := len(res)
 
 	if resSize == 0 {
