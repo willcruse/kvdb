@@ -86,12 +86,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to Init StringDiskLogger. Error: %v\n", err)
 	}
+	defer opLogger.Close()
 
+	serverAddress := fmt.Sprintf(":%d", config.Port)
 	tcpListener := serversrc.TCPListener{
-		Address:  fmt.Sprintf(":%d", config.Port),
+		Address:  serverAddress,
 		Storage:  sb,
 		OpLogger: opLogger,
 	}
 
+	log.Printf("Starting server on %s\n", serverAddress)
 	tcpListener.Listen()
 }

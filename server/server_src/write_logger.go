@@ -1,14 +1,19 @@
 package serversrc
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 )
 
 type WriteOperationLogger interface {
 	Init() error
+	Close() error
 	LogSet(key, value string) error
 	LogDelete(key string) error
+	Replay() ([]Command, error)
 }
 
 // TODO: This should be replaced with a logger that stores actual commands in binary format
@@ -29,6 +34,99 @@ func (sdl *StringDiskLogger) Init() error {
 
 	sdl.file = file
 	return nil
+}
+
+func (sdl *StringDiskLogger) Close() error {
+	err := sdl.file.Close()
+	if err != nil {
+		err = fmt.Errorf("(StringDiskLogger) Failed to close file. Error: %+v", err)
+		return err
+	}
+
+	sdl.file = nil
+	return nil
+}
+
+func (sdl *StringDiskLogger) Replay() ([]Command, error) {
+	if sdl.file == nil {
+		err := fmt.Errorf("(StringDiskLogger) Call to Replay with no file set. Have you called `Init()`?")
+		return nil, err
+	}
+
+	var commands []Command
+	scanner := bufio.NewScanner(sdl.file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		// TODO: Parse this into a command
+		switch line {
+		case "SET":
+			canScan := scanner.Scan()
+			if !canScan {
+				return nil, fmt.Errorf("(StringDiskLogger) Unexpected EOF")
+			}
+			keyLine := scanner.Text()
+			key, err := sdl.parseLogLine(keyLine)
+			if err != nil {
+				return nil, err
+			}
+			canScan = scanner.Scan()
+			if !canScan {
+				return nil, fmt.Errorf("(StringDiskLogger) Unexpected EOF")
+			}
+			valueLine := scanner.Text()
+			value, err := sdl.parseLogLine(valueLine)
+			if err != nil {
+				return nil, err
+			}
+			commands = append(commands, CreateSetCommand(key, value))
+		case "DELETE":
+			canScan := scanner.Scan()
+			if !canScan {
+				return nil, fmt.Errorf("(StringDiskLogger) Unexpected EOF")
+			}
+			keyLine := scanner.Text()
+			key, err := sdl.parseLogLine(keyLine)
+			if err != nil {
+				return nil, err
+			}
+			commands = append(commands, CreateDeleteCommand(key))
+		default:
+			err := fmt.Errorf("(StringDiskLogger) Unexpected line content. Expected 'SET' or 'DELETE' got '%s'", line)
+			return nil, err
+		}
+	}
+
+	return commands, nil
+}
+
+func (sdl *StringDiskLogger) parseLogLine(line string) (string, error) {
+	parsingLength := true
+	length := 0
+	var parsed []rune
+	for _, val := range line {
+		if parsingLength {
+			// We've reached the separator
+			if val == ' ' {
+				parsingLength = false
+			} else {
+				intVal := int(val - '0')
+				if intVal < 0 || intVal > 9 {
+					return "", fmt.Errorf("(StringDiskLogger) Failure to parse length of log line. Expected int got %r", val)
+				}
+
+				length = (length * 10) + intVal
+			}
+		} else {
+			// TODO: Length validation logic
+			parsed = append(parsed, val)
+		}
+	}
+
+	if len(parsed) == 0 {
+		return "", fmt.Errorf("(StringDiskLogger) Expected value from line got nothing. Line: %s", line)
+	}
+
+	return string(parsed), nil
 }
 
 func (sdl *StringDiskLogger) LogSet(key, value string) error {
