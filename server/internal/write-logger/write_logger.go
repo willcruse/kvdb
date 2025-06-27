@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/willcruse/kvdb/server/v2/internal"
+	"github.com/willcruse/kvdb/server/v2/internal/commands"
 )
 
 type WriteOperationLogger interface {
