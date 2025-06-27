@@ -4,33 +4,33 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/willcruse/kvdb/v2/client/src"
+	"github.com/willcruse/kvdb/client/v2/internal"
 )
 
 const SERVER_ADDRESS = "localhost:1337"
 
 func main() {
 	fmt.Printf("Connecting to server on %s\n", SERVER_ADDRESS)
-	tcpConn, err := src.CreateTCPServerConnection(SERVER_ADDRESS)
+	tcpConn, err := internal.CreateTCPServerConnection(SERVER_ADDRESS)
 	if err != nil {
 		log.Fatalf("Failed to start TCP Server Connection. Error: %v\n", err)
 	}
 
 	key := "test"
 	value := "hello,world"
-	setCommand := src.SetCommand{Key: key, Value: value}
+	setCommand := internal.SetCommand{Key: key, Value: value}
 	encodedSetCommand, err := setCommand.Encode()
 	if err != nil {
 		log.Fatalf("Failed to encode set command. Error: %v\n", err)
 	}
 
-	getCommand := src.GetCommand{Key: key}
+	getCommand := internal.GetCommand{Key: key}
 	encodedGetCommand, err := getCommand.Encode()
 	if err != nil {
 		log.Fatalf("Failed to encode get command. Error: %v\n", err)
 	}
 
-	deleteCommand := src.DeleteCommand{Key: key}
+	deleteCommand := internal.DeleteCommand{Key: key}
 	encodedDeleteCommand, err := deleteCommand.Encode()
 	if err != nil {
 		log.Fatalf("Failed to encode delete command. Error: %v\n", err)
@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to send set command. Error: %v\n", err)
 	}
-	decodedSetRes, err := src.DecodeResponse(setRes)
+	decodedSetRes, err := internal.DecodeResponse(setRes)
 	if err != nil {
 		log.Fatalf("Failed to decode set response. Error: %v\n", err)
 	}
@@ -50,7 +50,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to send get command. Error: %v\n", err)
 	}
-	decodedGetRes, err := src.DecodeResponse(getRes)
+	decodedGetRes, err := internal.DecodeResponse(getRes)
 	if err != nil {
 		log.Fatalf("Failed to decode get response. Error: %v\n", err)
 	}
@@ -60,7 +60,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to send delete command. Error: %v\n", err)
 	}
-	decodedDeleteRes, err := src.DecodeResponse(deleteRes)
+	decodedDeleteRes, err := internal.DecodeResponse(deleteRes)
 	if err != nil {
 		log.Fatalf("Failed to decode delete response. Error: %v\n", err)
 	}
