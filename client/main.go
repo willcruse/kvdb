@@ -1,13 +1,25 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 
 	"github.com/willcruse/kvdb/client/v2/internal"
 )
 
 const SERVER_ADDRESS = "localhost:1337"
+
+const HELP_MESSAGE = `Commands
+	GET <KEY>: Fetch value of <KEY> from server
+	SET <KEY> <VALUE>: Set <KEY> to <VALUE>
+	DELETE <KEY>: Delete <KEY> from server
+	HELP: Print this message
+
+	Note: Commands are case insensitive
+`
 
 func main() {
 	fmt.Printf("Connecting to server on %s\n", SERVER_ADDRESS)
@@ -16,53 +28,124 @@ func main() {
 		log.Fatalf("Failed to start TCP Server Connection. Error: %v\n", err)
 	}
 
-	key := "test"
-	value := "hello,world"
-	setCommand := internal.SetCommand{Key: key, Value: value}
-	encodedSetCommand, err := setCommand.Encode()
-	if err != nil {
-		log.Fatalf("Failed to encode set command. Error: %v\n", err)
-	}
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Print("> ")
+	for scanner.Scan() {
+		line := scanner.Text()
+		splitLine := strings.Split(line, " ")
+		var command string
+		if len(splitLine) == 0 {
+			command = "help"
+		} else {
+			command = splitLine[0]
+		}
 
-	getCommand := internal.GetCommand{Key: key}
-	encodedGetCommand, err := getCommand.Encode()
-	if err != nil {
-		log.Fatalf("Failed to encode get command. Error: %v\n", err)
-	}
+		command = strings.ToUpper(command)
 
-	deleteCommand := internal.DeleteCommand{Key: key}
-	encodedDeleteCommand, err := deleteCommand.Encode()
-	if err != nil {
-		log.Fatalf("Failed to encode delete command. Error: %v\n", err)
-	}
+		switch command {
+		case "GET":
+			if len(splitLine) != 2 {
+				fmt.Printf("GET command takes exactly one argument. Got %d.\n", len(splitLine)-1)
+				continue
+			}
 
-	setRes, err := tcpConn.SendMessage(encodedSetCommand)
-	if err != nil {
-		log.Fatalf("Failed to send set command. Error: %v\n", err)
-	}
-	decodedSetRes, err := internal.DecodeResponse(setRes)
-	if err != nil {
-		log.Fatalf("Failed to decode set response. Error: %v\n", err)
-	}
-	fmt.Printf("Set Response: %+v\n", decodedSetRes)
+			getCommand := internal.GetCommand{Key: splitLine[1]}
+			encoded, err := getCommand.Encode()
+			if err != nil {
+				fmt.Printf("ERROR: Failed to encode GET command. Command: '%+v'. Error: %v\n", getCommand, err)
+				continue
+			}
 
-	getRes, err := tcpConn.SendMessage(encodedGetCommand)
-	if err != nil {
-		log.Fatalf("Failed to send get command. Error: %v\n", err)
-	}
-	decodedGetRes, err := internal.DecodeResponse(getRes)
-	if err != nil {
-		log.Fatalf("Failed to decode get response. Error: %v\n", err)
-	}
-	fmt.Printf("Get Response: %+v\n", decodedGetRes)
+			res, err := tcpConn.SendMessage(encoded)
+			if err != nil {
+				fmt.Printf("ERROR: Failed to send GET command. Command: '%+v'. Error: %v\n", getCommand, err)
+				continue
+			}
 
-	deleteRes, err := tcpConn.SendMessage(encodedDeleteCommand)
-	if err != nil {
-		log.Fatalf("Failed to send delete command. Error: %v\n", err)
+			decoded, err := internal.DecodeResponse(res)
+			if err != nil {
+				fmt.Printf("ERROR: Failed to decode response. Error: %v\n", err)
+				continue
+			}
+
+			if decoded.ErrorCode != internal.NO_ERROR {
+				fmt.Printf("ERROR: Server responeded with Error code %d\n", decoded.ErrorCode)
+				continue
+			}
+
+			fmt.Printf("%s\n", decoded.Value)
+
+		case "SET":
+			if len(splitLine) != 3 {
+				fmt.Printf("SET command takes two arguments. Got %d.\n", len(splitLine)-1)
+				continue
+			}
+
+			setCommand := internal.SetCommand{Key: splitLine[1], Value: splitLine[2]}
+			encoded, err := setCommand.Encode()
+			if err != nil {
+				fmt.Printf("ERROR: Failed to encode SET command. Command: '%+v'. Error: %v\n", setCommand, err)
+				continue
+			}
+
+			res, err := tcpConn.SendMessage(encoded)
+			if err != nil {
+				fmt.Printf("ERROR: Failed to send SET command. Command: '%+v'. Error: %v\n", setCommand, err)
+				continue
+			}
+
+			decoded, err := internal.DecodeResponse(res)
+			if err != nil {
+				fmt.Printf("ERROR: Failed to decode response. Error: %v\n", err)
+				continue
+			}
+
+			if decoded.ErrorCode != internal.NO_ERROR {
+				fmt.Printf("ERROR: Server responeded with Error code %d\n", decoded.ErrorCode)
+				continue
+			}
+
+			fmt.Println("Success!")
+
+		case "DELETE":
+			if len(splitLine) != 2 {
+				fmt.Printf("DELETE command takes one argument. Got %d.\n", len(splitLine)-1)
+				continue
+			}
+
+			deleteCommand := internal.DeleteCommand{Key: splitLine[1]}
+			encoded, err := deleteCommand.Encode()
+			if err != nil {
+				fmt.Printf("ERROR: Failed to encode DELETE command. Command: '%+v'. Error: %v\n", deleteCommand, err)
+				continue
+			}
+
+			res, err := tcpConn.SendMessage(encoded)
+			if err != nil {
+				fmt.Printf("ERROR: Failed to send DELETE command. Command: '%+v'. Error: %v\n", deleteCommand, err)
+				continue
+			}
+
+			decoded, err := internal.DecodeResponse(res)
+			if err != nil {
+				fmt.Printf("ERROR: Failed to decode response. Error: %v\n", err)
+				continue
+			}
+
+			if decoded.ErrorCode != internal.NO_ERROR {
+				fmt.Printf("ERROR: Server responeded with Error code %d\n", decoded.ErrorCode)
+				continue
+			}
+
+			fmt.Println("Success!")
+
+		case "HELP":
+			fmt.Print(HELP_MESSAGE)
+
+		default:
+			fmt.Printf("Unknown Command '%s'\n%s", command, HELP_MESSAGE)
+		}
+
+		fmt.Print("> ")
 	}
-	decodedDeleteRes, err := internal.DecodeResponse(deleteRes)
-	if err != nil {
-		log.Fatalf("Failed to decode delete response. Error: %v\n", err)
-	}
-	fmt.Printf("Delete Response: %+v\n", decodedDeleteRes)
 }
