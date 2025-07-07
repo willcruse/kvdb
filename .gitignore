@@ -42,3 +42,5 @@ go.work
 # End of https://www.toptal.com/developers/gitignore/api/linux,go
 
 mise.toml
+# DB backup files
+*.db
