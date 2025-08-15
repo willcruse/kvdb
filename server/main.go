@@ -82,7 +82,8 @@ func main() {
 	}
 
 	sb := &storagebackend.MapStorageBackend{}
-	opLogger := &writelogger.StringDiskLogger{FileName: config.LogFilePath}
+	// opLogger := &writelogger.StringDiskLogger{FileName: config.LogFilePath}
+	opLogger := &writelogger.BinaryDiskLogger{FileName: config.LogFilePath}
 
 	serverAddress := fmt.Sprintf(":%d", config.Port)
 	tcpListener := listener.TCPListener{
@@ -95,6 +96,9 @@ func main() {
 		WriteLogger:    opLogger,
 	}
 	err = server.Init()
+	if err != nil {
+		log.Fatalf("Failed to Init server. Error: %v\n", err)
+	}
 	log.Printf("Starting server on %s\n", serverAddress)
 	err = server.Listen()
 	if err != nil {
